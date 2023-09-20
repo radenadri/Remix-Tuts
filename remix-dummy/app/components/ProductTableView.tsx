@@ -42,19 +42,21 @@ const columns = [
   }),
 ];
 
+
 /**
  * Retrieves a list of products from the server.
  *
  * @param {number} limit - The maximum number of products to retrieve. Default is 5.
  * @param {number} skip - The number of products to skip. Default is 0.
+ * @param {number} page - The page number to retrieve. Default is 1.
+ * @param {string} q - The search query for products. Default is an empty string.
  * @return {Promise<IProduct[]>} A promise that resolves to an array of products.
  */
-async function getProducts(limit: number = 5, skip: number = 0, q: string = ''): Promise<IProduct[]> {
+async function getProducts({ limit = 5, skip = 0, page = 1, q = '' }): Promise<IProduct[]> {
   const url = new URL(q.length === 0 ? 'https://dummyjson.com/products' : `https://dummyjson.com/products/search?q=${q}`);
+  url.searchParams.set('page', page.toString());
   url.searchParams.set('limit', limit.toString());
   url.searchParams.set('skip', skip.toString());
-
-  console.log(url);
 
   const response = await fetch(
     url, {
@@ -80,14 +82,18 @@ async function getProducts(limit: number = 5, skip: number = 0, q: string = ''):
  */
 export default function ProductTableView() {
 
+  const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(5);
   const [skip, setSkip] = useState(0);
   const [globalFilter, setGlobalFilter] = useState('');
+  const [loading, setLoading] = useState(false);
   const [products, setProducts] = useState<IProduct[]>([]);
 
   const { status, data, refetch, isError, isLoading } = useQuery({
     queryKey: ['getProducts'],
-    queryFn: () => getProducts(limit, skip, globalFilter),
+    queryFn: () => getProducts({
+      limit, skip, page, q: globalFilter
+    }),
   });
 
   const table = useReactTable({
@@ -99,6 +105,7 @@ export default function ProductTableView() {
     state: {
       limit,
       skip,
+      page,
       globalFilter
     },
     getCoreRowModel: getCoreRowModel(),
@@ -112,9 +119,28 @@ export default function ProductTableView() {
   }, [status, data]);
 
   useEffect(() => {
-    refetch();
+    setLoading(true);
+
     setSkip(0);
+    setPage(1);
+
+    refetch();
+
+    setLoading(false);
   }, [limit, globalFilter, refetch]);
+
+  useEffect(() => {
+    if (page === 0) {
+      setSkip(0);
+      return;
+    }
+    setLoading(true);
+    setSkip((page * limit) - limit);
+
+    refetch();
+    setLoading(false);
+
+  }, [page, limit, refetch, skip]);
 
   return (
     <div>
@@ -206,9 +232,24 @@ export default function ProductTableView() {
           </table>
         </div>
       )}
-      <br />
-      <Link to="/">Go Back</Link>
-      <br />
+      <p style={{ marginRight: '.5rem' }}>Current page : {page}</p>
+      {page > 1 && <button
+        disabled={loading}
+        type="button"
+        onClick={() => setPage(page => page - 1)}>
+        Previous Page
+      </button>}
+      {products.length > 0 && <button
+        disabled={loading}
+        type="button"
+        onClick={() => setPage(page => page + 1)}>
+        Next Page
+      </button>}
+      <div style={{
+        margin: '1rem 0'
+      }}>
+        <Link to="/">Go Back</Link>
+      </div>
       <div style={{
         display: 'flex'
       }}>
