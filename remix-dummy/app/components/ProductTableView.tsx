@@ -86,10 +86,9 @@ export default function ProductTableView() {
   const [limit, setLimit] = useState(5);
   const [skip, setSkip] = useState(0);
   const [globalFilter, setGlobalFilter] = useState('');
-  const [loading, setLoading] = useState(false);
   const [products, setProducts] = useState<IProduct[]>([]);
 
-  const { status, data, refetch, isError, isLoading } = useQuery({
+  const { status, data, refetch, isError, isFetching, isLoading } = useQuery({
     queryKey: ['getProducts'],
     queryFn: () => getProducts({
       limit, skip, page, q: globalFilter
@@ -119,14 +118,10 @@ export default function ProductTableView() {
   }, [status, data]);
 
   useEffect(() => {
-    setLoading(true);
-
     setSkip(0);
     setPage(1);
 
     refetch();
-
-    setLoading(false);
   }, [limit, globalFilter, refetch]);
 
   useEffect(() => {
@@ -134,11 +129,10 @@ export default function ProductTableView() {
       setSkip(0);
       return;
     }
-    setLoading(true);
+
     setSkip((page * limit) - limit);
 
     refetch();
-    setLoading(false);
 
   }, [page, limit, refetch, skip]);
 
@@ -234,13 +228,13 @@ export default function ProductTableView() {
       )}
       <p style={{ marginRight: '.5rem' }}>Current page : {page}</p>
       {page > 1 && <button
-        disabled={loading}
+        disabled={isFetching}
         type="button"
         onClick={() => setPage(page => page - 1)}>
         Previous Page
       </button>}
       {products.length > 0 && <button
-        disabled={loading}
+        disabled={isFetching}
         type="button"
         onClick={() => setPage(page => page + 1)}>
         Next Page
